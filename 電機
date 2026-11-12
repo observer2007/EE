@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>轉生EE:東海電機大一生存模擬器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --bg-color: #030b1c; /* 深邃藍 */
+            --panel-bg: rgba(13, 27, 56, 0.85); /* 半透明深藍 */
+            --border-glow: #00b3ff; /* 霓虹亮藍 */
+            --text-main: #e2e8f0;
+            --text-accent: #66d9ff;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            background-image: 
+                radial-gradient(circle at 50% 0%, #0c265c 0%, transparent 70%),
+                linear-gradient(rgba(0, 179, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 179, 255, 0.04) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .cyber-container {
+            box-shadow: 0 0 30px rgba(0, 179, 255, 0.15), inset 0 0 20px rgba(0, 179, 255, 0.1);
+            border: 1px solid rgba(0, 179, 255, 0.4);
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+        }
+
+        .typing-text {
+            font-family: 'Share Tech Mono', 'Noto Sans TC', monospace;
+            line-height: 1.7;
+            text-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+        }
+
+        .cyber-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            font-family: 'Share Tech Mono', 'Noto Sans TC', monospace;
+            background: rgba(0, 85, 153, 0.2);
+            border: 1px solid #0077cc;
+        }
+
+        .cyber-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 179, 255, 0.3), transparent);
+            transition: all 0.4s ease;
+        }
+
+        .cyber-btn:hover::before {
+            left: 100%;
+        }
+
+        .cyber-btn:hover {
+            box-shadow: 0 0 15px rgba(0, 179, 255, 0.5);
+            border-color: var(--border-glow);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 8px;
+            height: 1.2em;
+            background-color: var(--border-glow);
+            vertical-align: text-bottom;
+            animation: blink 1s step-end infinite;
+            margin-left: 4px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 裝飾性邊角 */
+        .corner {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-color: var(--border-glow);
+            border-style: solid;
+        }
+        .corner-tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+        .corner-tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+        .corner-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+        .corner-br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4 py-10">
+
+    <!-- 頂部標題區 -->
+    <header class="mb-8 text-center fade-in">
+        <h1 class="text-3xl md:text-4xl font-bold tracking-widest" style="color: var(--border-glow); text-shadow: 0 0 15px rgba(0,179,255,0.6);">
+            轉生EE:東海電機大一生存模擬器
+        </h1>
+        <div class="mt-2 text-blue-300 font-mono text-sm tracking-widest opacity-80">
+            [ TUNGHAI_EE_SIMULATOR_OS_v2.0 ]
+        </div>
+    </header>
+
+    <!-- 遊戲主體容器 -->
+    <main class="cyber-container w-full max-w-4xl rounded-sm p-6 md:p-10 relative fade-in">
+        <div class="corner corner-tl"></div>
+        <div class="corner corner-tr"></div>
+        <div class="corner corner-bl"></div>
+        <div class="corner corner-br"></div>
+
+        <!-- 進度條 (裝飾用) -->
+        <div class="w-full h-1 bg-blue-900/50 mb-6 rounded overflow-hidden">
+            <div id="progress-bar" class="h-full bg-blue-400 transition-all duration-500 shadow-[0_0_10px_#00b3ff]" style="width: 10%;"></div>
+        </div>
+
+        <!-- 文本顯示區 -->
+        <div class="min-h-[250px] mb-8">
+            <div id="story-text" class="typing-text text-lg md:text-xl whitespace-pre-wrap leading-relaxed"></div>
+            <span class="cursor-blink" id="cursor"></span>
+        </div>
+
+        <!-- 選項按鈕區 -->
+        <div id="choices-container" class="flex flex-col gap-5 opacity-0 hidden">
+            <!-- 按鈕由 JS 動態生成 -->
+        </div>
+
+    </main>
+
+    <script>
+        // 遊戲狀態紀錄
+        let state = {
+            stage: 0,
+            sleepHabit: '', // 'early' or 'late'
+            breakfast: '',  // 'walk_eat', 'bus_eat', 'rush_eat', 'rush_starve'
+            club: '',       // 'sports' or 'assoc'
+            lunch: '',      // 'fight' or 'retreat'
+            wiring: '',     // 'careful' or 'messy'
+            career: ''      // 'hardware' or 'software'
+        };
+
+        let isTyping = false;
+        let typeInterval;
+        let currentText = "";
+        
+        // DOM 元素
+        const storyTextEl = document.getElementById('story-text');
+        const choicesContainer = document.getElementById('choices-container');
+        const progressBar = document.getElementById('progress-bar');
+
+        // 關卡內容產生器
+        function getStageContent() {
+            let content = { text: "", choices: [] };
+
+            switch (state.stage) {
+                case 0:
+                    content.text = "【轉生EE:東海電機大一生存模擬器】\n\n歡迎來到東海大學！你即將展開充滿挑戰的大一電機系生活。\n\n請選擇開始遊戲，體驗你的專屬生存路線！";
+                    content.choices = [
+                        { text: "[ 開始遊戲 (Start Game) ]", action: () => { state.stage = 1; } }
+                    ];
+                    break;
+
+                case 1:
+                    content.text = "【第一關：開學前夕的抉擇】\n\n「叮咚！歡迎來到東海大學！」\n身為剛轉生到這片大肚山脈的電機系新手村村民，你第一眼看到課表就差點暈倒——明天就是大學的第一天，而且第一堂課就是傳說中的大魔王早八：「線性代數」。\n\n今晚的你看著還沒打完的遊戲和充滿未知的明天，你選擇：";
+                    content.choices = [
+                        { text: "A. 乖乖洗洗睡，為了早起做準備 (早睡)", action: () => state.sleepHabit = 'early' },
+                        { text: "B. 大學生就是要夜衝和打遊戲啊！再一局就好...... (熬夜)", action: () => state.sleepHabit = 'late' }
+                    ];
+                    break;
+
+                case 2:
+                    if (state.sleepHabit === 'early') {
+                        content.text = "【第二關：早晨的登山大考驗】\n\n因為早睡，你今天有精神地起床了！看了看手錶，距離早八還有充裕的 25 分鐘。\n\n不過從第一校區的宿舍出發，距離社科院的山頂教室有一段將近 10 分鐘的奪命陡坡。此時你的肚子咕咕叫了起來，你決定：";
+                        content.choices = [
+                            { text: "A. 順路走去【青青餐館】買份豐盛的早餐，慢慢走上山", action: () => state.breakfast = 'walk_eat' },
+                            { text: "B. 偷懶搭校內公車上去，下車再去山頂便利商店隨便買點吃的", action: () => state.breakfast = 'bus_eat' }
+                        ];
+                    } else {
+                        content.text = "【第二關：死線前的狂奔】\n\n「啪！」按掉鬧鐘的瞬間你驚覺不妙！前一晚熬夜太晚睡，今天果然睡過頭了！距離早八只剩下緊迫的 12 分鐘。\n\n從第一校區宿舍到社科院教室的 10 分鐘陡坡宛如天險。這時你的肚子狂叫抗議，你決定：";
+                        content.choices = [
+                            { text: "A. 不管啦肚子好餓！順路衝去【青青餐館】買早餐 (壓線進教室，但獲得精神力)", action: () => state.breakfast = 'rush_eat' },
+                            { text: "B. 早餐算什麼？學分比較重要！放棄早餐直接衝上山 (提早到教室，但肚子空空)", action: () => state.breakfast = 'rush_starve' }
+                        ];
+                    }
+                    break;
+
+                case 3:
+                    // 根據前兩關動態生成開場白
+                    let prefix = "";
+                    if (state.sleepHabit === 'late') {
+                        prefix = "昨晚熬夜加上早上急急忙忙趕到教室，你在上課時忍不住頻頻點頭，最後還是不小心睡著錯過了重要筆記......\n\n";
+                    } else {
+                        prefix = "靠著充足的睡眠與悠哉的早晨時光，你在線性代數課上展現了驚人的專注力，順利度過早八的考驗！\n\n";
+                    }
+
+                    content.text = `【第三關：青春的形狀】\n\n${prefix}大學生活不能只有讀書，東海電機有許多活躍的系隊和系學會。課後時光是拓展人際關係與技能的好機會。你打算把課餘時間投入在哪裡？`;
+                    content.choices = [
+                        { text: "A. 加入系排 / 系籃，跟學長姊一起在球場上揮灑青春的汗水！", action: () => state.club = 'sports' },
+                        { text: "B. 加入系學會，專注於籌辦大型活動與拓展交友圈！", action: () => state.club = 'assoc' }
+                    ];
+                    break;
+
+                case 4:
+                    content.text = "【第四關：12點的喪屍突圍戰】\n\n早上的課終於結束，中午 12 點鐘聲一響，肚子餓扁的你來到男宿餐廳 (男餐)。\n\n眼前景象讓你驚呆了——瞬間湧入的大量飢餓學生宛如喪屍過境，排隊動線全毀，空氣中充滿了食物的香氣與人們的殺氣。\n\n面對這波喪屍潮，你決定：";
+                    content.choices = [
+                        { text: "A. 跟喪屍們拚了！燃燒鬥志硬擠進去買自助餐 (消耗體力，但吃得很飽)", action: () => state.lunch = 'fight' },
+                        { text: "B. 果斷放棄戰場，退回到超商或比較遠的學餐買微波食品 (保留體力，但下午會微餓)", action: () => state.lunch = 'retreat' }
+                    ];
+                    break;
+
+                case 5:
+                    content.text = "【第五關：Vcc與GND的考驗】\n\n下午的課程開始了。大一必修課滿滿，除了微積分、程式設計，最讓人頭痛的就是「邏輯設計與實驗課」。\n\n眼前是一堆長得一模一樣的 74 系列邏輯閘 IC，還有一塊插滿密密麻麻孔洞的麵包板。助教冷酷地要求你在下課前完成一個「半加器電路」。\n\n看著手邊的一大把電線，你決定怎麼做？";
+                    content.choices = [
+                        { text: "A. 拿出準備好的單芯線，按顏色分類，有條理地慢慢拉線", action: () => state.wiring = 'careful' },
+                        { text: "B. 管它的！只要能通電會亮燈就好，隨便抓長長短短的線亂插一通形成「鳥巢」", action: () => state.wiring = 'messy' }
+                    ];
+                    break;
+
+                case 6:
+                    content.text = "【第六關：深夜的飢餓遊戲】\n\n結束了一整天燒腦的課程，晚上回到第一校區的宿舍。夜深人靜時，肚子不爭氣地餓了起來，你好想煮一碗香噴噴的泡麵當宵夜。\n\n此時，你翻出了從家裡帶來的神秘法寶...你決定：";
+                    content.choices = [
+                        { text: "A. 懶得走出去，偷偷在房間插上【快煮鍋】直接煮起來", action: () => state.stage = 'bad_end' },
+                        { text: "B. 遵守宿舍規定，乖乖拿著食材與鍋具走到【公共廚房】去煮", action: () => state.stage = 7 } // 跳轉第7關
+                    ];
+                    break;
+                
+                case 'bad_end':
+                    content.text = "【BAD END：大肚山上的跳電兇手】\n\n你在房間插上快煮鍋，正當水快要滾，泡麵香氣剛飄出來的時候......\n\n「啪滋！」一聲巨響，房間瞬間陷入死寂的黑暗，連走廊的燈都滅了。整層樓大跳電！\n\n不到三分鐘，舍監拿著刺眼的手電筒用力敲響了你的房門。在室友與整層樓同學的注視下，你直接社會性死亡。你的大一生活，就此提前畫下句點......\n\n[ 遊戲結束 / GAME OVER ]";
+                    content.choices = [
+                        { text: "[ 重新開始 (Restart) ]", action: () => resetGame() }
+                    ];
+                    break;
+
+                case 7:
+                    content.text = "【第七關：未來的藍圖】\n\n你在公共廚房煮了完美的宵夜，還順便跟同樣在煮宵夜的室友討論出了線性代數的作業解答！安全下莊！\n\n時光飛逝，大學生活過了一半。電機系未來的出路非常廣泛，大四前是衝刺準備專題的黃金期。對於未來的研究方向，你決定把技能點數投資在哪個領域？";
+                    content.choices = [
+                        { text: "A. 提早修習台積電微學程與進階電子學，拚研究所與【半導體 / 晶片硬體】產業", action: () => state.career = 'hardware' },
+                        { text: "B. 專攻程式設計與單晶片，往【軟韌體 / AI 互動科技】方向發展", action: () => state.career = 'software' }
+                    ];
+                    break;
+                
+                case 8: // Endings
+                    content = generateEnding();
+                    break;
+            }
+
+            return content;
+        }
+
+        function generateEnding() {
+            let title = "";
+            let desc = "";
+
+            if (state.career === 'hardware' && state.wiring === 'careful') {
+                title = "【結局 A：硬體新星】";
+                desc = "你選擇提早修習台積電微學程，加上大一那年培養出整齊有條理的麵包板接線習慣，讓你在複雜的 IC 佈局與進階電子學上無往不利！你鮮少遇到電路短路的鳥事，成功推甄上頂尖研究所，畢業後成為半導體與 IC 設計產業中炙手可熱的王牌工程師！";
+            } else if (state.career === 'hardware' && state.wiring === 'messy') {
+                title = "【結局 D：短路驚魂】";
+                desc = "當年隨便亂插的「鳥巢式」麵包板習慣果然反噬了！在半導體與硬體設計的專題路上，你的電路板永遠充滿了神祕的 Bug 和不明的短路。但憑藉著在電機系長年訓練出的超強韌性與 Debug 毅力，你還是驚險地完成專題順利畢業，成為了業界傳奇的「硬體除錯大師」！(雖然掉了很多頭髮)";
+            } else if (state.career === 'software' && state.club === 'assoc') {
+                title = "【結局 C：跨界公關星】";
+                desc = "雖然硬核的電機課業讓你屢屢驚險飛過，但你在系學會累積了超強的溝通技巧、辦活動的抗壓性與廣大人脈。你將電機的邏輯思維結合強大的社交軟實力，成為了科技業最稀缺也最需要的專案經理。你穿梭在工程師與客戶之間，帶領團隊一次次完成千萬級的大型專案！";
+            } else if (state.career === 'software' && state.club === 'sports') {
+                title = "【結局 B：創客神童】";
+                desc = "你專攻程式設計與單晶片，並靠著系隊鍛鍊出的超人體力，在課餘時間瘋狂投入實作專案。你成功開發出結合體感與互動科技的超受歡迎物聯網裝置，畢業後立刻被頂尖軟韌體科技公司網羅，開啟了一邊寫 Code 一邊改變世界的熱血旅程！";
+            }
+
+            return {
+                text: `${title}\n\n${desc}\n\n[ 模擬結束：生存指南報告生成完畢。 ]`,
+                choices: [
+                    { text: "[ 重新開始 (Restart) ]", action: () => resetGame() }
+                ]
+            };
+        }
+
+        // 渲染畫面
+        function renderStage() {
+            // 更新進度條
+            let progress = 100;
+            if (typeof state.stage === 'number') {
+                progress = Math.min((state.stage / 8) * 100, 100);
+            }
+            progressBar.style.width = `${progress}%`;
+
+            const content = getStageContent();
+            typeText(content.text, () => {
+                showChoices(content.choices);
+            });
+        }
+
+        // 打字機效果
+        function typeText(text, callback) {
+            if (isTyping) clearInterval(typeInterval);
+            isTyping = true;
+            storyTextEl.innerHTML = ''; // 清空內容
+            choicesContainer.classList.add('hidden');
+            choicesContainer.classList.remove('fade-in');
+            
+            let i = 0;
+            typeInterval = setInterval(() => {
+                // 處理簡單的換行符號
+                if (text.charAt(i) === '\n') {
+                    storyTextEl.innerHTML += '<br>';
+                } else {
+                    storyTextEl.innerHTML += text.charAt(i);
+                }
+                
+                i++;
+                if (i >= text.length) {
+                    clearInterval(typeInterval);
+                    isTyping = false;
+                    if (callback) callback();
+                }
+            }, 30); // 打字速度，越小越快
+        }
+
+        // 顯示按鈕選項
+        function showChoices(choices) {
+            choicesContainer.innerHTML = ''; // 清空舊按鈕
+            
+            choices.forEach((choice, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'cyber-btn w-full text-left px-6 py-4 text-[var(--text-accent)] rounded tracking-wide leading-relaxed';
+                btn.textContent = choice.text;
+                btn.onclick = () => {
+                    if (isTyping) return; // 打字中防誤觸
+                    
+                    let previousStage = state.stage;
+                    choice.action();     // 執行選項動作 (更新 state)
+                    
+                    // 前進到下一關，只有當 action 沒有手動改變 stage 時才自動加一
+                    if (state.stage === previousStage && typeof state.stage === 'number' && state.stage < 8) {
+                         state.stage++;
+                    }
+
+                    renderStage();
+                };
+                choicesContainer.appendChild(btn);
+            });
+
+            choicesContainer.classList.remove('hidden');
+            // 延遲一點點加入動畫 class，讓 display block 先作用
+            setTimeout(() => {
+                choicesContainer.classList.add('fade-in');
+            }, 50);
+        }
+
+        // 重置遊戲
+        function resetGame() {
+            state = { stage: 0, sleepHabit: '', breakfast: '', club: '', lunch: '', wiring: '', career: '' };
+        }
+
+        // 遊戲初始化
+        window.onload = () => {
+            setTimeout(renderStage, 600); // 開場微微延遲營造氣氛
+        };
+    </script>
+</body>
+</html>
